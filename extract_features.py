@@ -1,65 +1,353 @@
 import os
 import numpy as np
-import pandas as pd
-import tensorflow_hub as hub
 import librosa
+import tensorflow_hub as hub
+
+
+# ============================================================
+# LOAD YAMNET
+# ============================================================
 
 print("Loading YAMNet...")
-yamnet = hub.load("https://tfhub.dev/google/yamnet/1")
+
+yamnet = hub.load(
+    "https://tfhub.dev/google/yamnet/1"
+)
 
 DATASET_PATH = "dataset"
 
-features = []
-labels = []
 
-for label in os.listdir(DATASET_PATH):
+# ============================================================
+# FEATURE EXTRACTION FUNCTION
+# ============================================================
 
-    folder = os.path.join(DATASET_PATH, label)
+def extract_from_folder(folder_path, label_mapping):
+    """
+    Extract YAMNet embeddings from audio files.
 
-    if not os.path.isdir(folder):
-        continue
+    The function searches through the folder and
+    all of its subfolders.
 
-    print("\nProcessing:", label)
+    The TOP-LEVEL folder determines the class.
+    """
 
-    for file in os.listdir(folder):
+    features = []
+    labels = []
 
-        if file.lower().endswith((".wav", ".mp3")):
+    for root, dirs, files in os.walk(folder_path):
 
-            filepath = os.path.join(folder, file)
+        for file in files:
+
+            # ------------------------------------------------
+            # Only process audio files
+            # ------------------------------------------------
+
+            if not file.lower().endswith(
+                (".wav", ".mp3")
+            ):
+                continue
+
+            filepath = os.path.join(
+                root,
+                file
+            )
+
+            # ------------------------------------------------
+            # Find TOP-LEVEL folder
+            # ------------------------------------------------
+
+            relative_path = os.path.relpath(
+                root,
+                folder_path
+            )
+
+            top_level_folder = relative_path.split(
+                os.sep
+            )[0]
+
+            # ------------------------------------------------
+            # Convert folder name into required label
+            # ------------------------------------------------
+
+            if top_level_folder in label_mapping:
+
+                label = label_mapping[
+                    top_level_folder
+                ]
+
+            else:
+
+                label = top_level_folder.lower()
 
             try:
-                waveform, sr = librosa.load(
+
+                # ------------------------------------------------
+                # Load audio
+                # ------------------------------------------------
+
+                waveform, sample_rate = librosa.load(
                     filepath,
                     sr=16000,
                     mono=True
                 )
 
-                scores, embeddings, spectrogram = yamnet(waveform)
+                # ------------------------------------------------
+                # Run YAMNet
+                # ------------------------------------------------
 
+                scores, embeddings, spectrogram = yamnet(
+                    waveform
+                )
+
+                # ------------------------------------------------
                 # Average YAMNet embeddings
-                embedding = embeddings.numpy().mean(axis=0)
+                #
+                # Result = 1024-dimensional feature vector
+                # ------------------------------------------------
 
-                features.append(embedding)
-                labels.append(label)
+                embedding = embeddings.numpy().mean(
+                    axis=0
+                )
 
-                print("  Done:", file)
+                features.append(
+                    embedding
+                )
+
+                labels.append(
+                    label
+                )
+
+                print("  Done:", filepath)
+                print("       Label:", label)
 
             except Exception as e:
-                print("  ERROR:", file)
+
+                print("  ERROR:", filepath)
                 print(" ", e)
 
-X = np.array(features)
-y = np.array(labels)
+    return (
+        np.array(features),
+        np.array(labels)
+    )
 
-print("\nFeature extraction completed!")
-print("Number of audio files:", len(X))
-print("Feature shape:", X.shape)
-print("Classes:", np.unique(y))
 
-# Save features
-np.save("X.npy", X)
-np.save("y.npy", y)
+# ============================================================
+# MAIN CLASSIFIER
+# ============================================================
 
-print("\nSaved:")
-print("X.npy")
-print("y.npy")
+print("\n================================")
+print("EXTRACTING MAIN CLASSIFIER DATA")
+print("================================")
+
+
+main_mapping = {
+
+    "bird": "bird",
+
+    "animal": "animal",
+
+    "chainsaw": "chainsaw",
+
+    "rain": "rain",
+
+    "vehicle": "vehicle"
+}
+
+
+main_path = os.path.join(
+    DATASET_PATH,
+    "main"
+)
+
+
+main_X, main_y = extract_from_folder(
+    main_path,
+    main_mapping
+)
+
+
+# ------------------------------------------------------------
+# Save main features
+# ------------------------------------------------------------
+
+np.save(
+    "main_X.npy",
+    main_X
+)
+
+np.save(
+    "main_y.npy",
+    main_y
+)
+
+
+print("\nMAIN DATASET")
+
+print(
+    "Features:",
+    main_X.shape
+)
+
+print(
+    "Labels:",
+    main_y.shape
+)
+
+print(
+    "Classes:",
+    np.unique(main_y)
+)
+
+
+# ============================================================
+# BIRD CLASSIFIER
+# ============================================================
+
+print("\n================================")
+print("EXTRACTING BIRD CLASSIFIER DATA")
+print("================================")
+
+
+bird_mapping = {
+
+    "Peacock": "peacock",
+
+    "Parrot": "parrot",
+
+    "Sparrow": "sparrow",
+
+    "OtherBird": "normal_bird"
+}
+
+
+bird_path = os.path.join(
+    DATASET_PATH,
+    "bird"
+)
+
+
+bird_X, bird_y = extract_from_folder(
+    bird_path,
+    bird_mapping
+)
+
+
+# ------------------------------------------------------------
+# Save bird features
+# ------------------------------------------------------------
+
+np.save(
+    "bird_X.npy",
+    bird_X
+)
+
+np.save(
+    "bird_y.npy",
+    bird_y
+)
+
+
+print("\nBIRD DATASET")
+
+print(
+    "Features:",
+    bird_X.shape
+)
+
+print(
+    "Labels:",
+    bird_y.shape
+)
+
+print(
+    "Classes:",
+    np.unique(bird_y)
+)
+
+
+# ============================================================
+# ANIMAL CLASSIFIER
+# ============================================================
+
+print("\n================================")
+print("EXTRACTING ANIMAL CLASSIFIER DATA")
+print("================================")
+
+
+animal_mapping = {
+
+    "Elephant": "elephant",
+
+    "Lion": "lion",
+
+    "Monkey": "monkey",
+
+    "OtherAnimal": "other_animal"
+}
+
+
+animal_path = os.path.join(
+    DATASET_PATH,
+    "animal"
+)
+
+
+animal_X, animal_y = extract_from_folder(
+    animal_path,
+    animal_mapping
+)
+
+
+# ------------------------------------------------------------
+# Save animal features
+# ------------------------------------------------------------
+
+np.save(
+    "animal_X.npy",
+    animal_X
+)
+
+np.save(
+    "animal_y.npy",
+    animal_y
+)
+
+
+print("\nANIMAL DATASET")
+
+print(
+    "Features:",
+    animal_X.shape
+)
+
+print(
+    "Labels:",
+    animal_y.shape
+)
+
+print(
+    "Classes:",
+    np.unique(animal_y)
+)
+
+
+# ============================================================
+# COMPLETE
+# ============================================================
+
+print("\n================================")
+print("ALL FEATURE EXTRACTION COMPLETE")
+print("================================")
+
+print("\nSaved files:")
+
+print("main_X.npy")
+print("main_y.npy")
+
+print("bird_X.npy")
+print("bird_y.npy")
+
+print("animal_X.npy")
+print("animal_y.npy")
+
+print("\nDone!")

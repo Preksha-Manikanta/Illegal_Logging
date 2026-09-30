@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Generated ML files
+*.npy
+*.pkl
+
+# Audio datasets
+*.wav
+*.mp3
+*.flac
+
+# Uploaded/test audio
+uploads/
+audio_file/
+
+# Generated dataset folders
+dataset/
+
+# OS
+.DS_Store
+Thumbs.db
